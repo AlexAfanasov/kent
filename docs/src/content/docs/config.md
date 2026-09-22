@@ -22,6 +22,12 @@ The private `config.local.toml` is read from the main workspace when using workt
 
 Some cache-affecting settings like prompts, tools, and model IDs are **snapshotted** at session start and re-loaded at **compaction**. This is done to keep the prompt cache.
 
+### Connecting to a server
+
+Clients discover the server address from global and shared workspace settings, with environment and CLI overrides. Initial discovery uses the current or explicitly selected workspace, including when resuming a session. The connected server resolves the session's workspace. Private workspace settings do not select the initial connection.
+
+Clients read only connection settings and local preferences, including [lifecycle hooks](../lifecycle-hooks/). Unparseable configuration files prevent connection. Operational settings are validated by the server, which prepares its persistence and worktree directories. Session settings and terminal setup choices come from that server.
+
 ## Locations
 
 ### Persistence root
