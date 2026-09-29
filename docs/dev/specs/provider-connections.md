@@ -57,7 +57,9 @@
 - Add must save the new connection in global configuration and offer an explicit Make default choice. Make default must change only the global default, explain any overriding workspace default, and preserve existing role assignments and Session bindings.
 - Add for a ChatGPT connection must save its definition only after successful sign-in. Failed sign-in or cancellation before the operation is accepted must leave no definition. Observer disconnect must not cancel accepted work.
 - Selecting an existing ChatGPT connection must re-authenticate without changing its ID or creating a duplicate. Selecting an API-key connection must show and allow replacement of its environment-variable reference, never request the secret. Selecting an auth-less connection must explain that sign-in is unnecessary without editing its endpoint.
-- The API-key field must show: "Don't paste your API key here. This is the name of the **environment variable** Kent will read **at the server's location** to get the api key from."
+- The API-key field must show: "Don't paste your API key here. This is the name of the **environment variable** Kent will read **at the server's location** to get the api key from. Alternatively, place it in a ~/.kent/.env file."
+- Connection setup and management operations must show a full-screen animated spinner without loading labels while waiting for a response.
+- The server must validate connection definitions and references. Terminal forms must not define separate validation rules.
 - `/logout` must open the same picker without deleting credentials.
 
 ## Configuration Cutover

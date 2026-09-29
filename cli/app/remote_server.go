@@ -206,7 +206,7 @@ func (s *remoteAppServer) Reauthenticate(ctx context.Context, interactor authInt
 		return errors.New("remote server is required")
 	}
 	if _, ok := interactor.(*interactiveAuthInteractor); ok && interactiveAuth {
-		catalog, err := runConnectionOperation(ctx, s.PresentationTheme(), "Loading connections...", func() (*authpb.ConnectionCatalog, error) {
+		catalog, err := runConnectionOperation(ctx, s.PresentationTheme(), func() (*authpb.ConnectionCatalog, error) {
 			return s.remote.GetConnections(ctx, &authpb.GetConnectionsRequest{})
 		})
 		if err == nil {

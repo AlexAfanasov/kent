@@ -72,14 +72,12 @@ The desktop app, due to the asynchronous nature of workflows, needs a [server](.
 ## First use
 
 :::danger[Security Warning]
-Kent grants the model **full access** to your computer, with unrestricted tool execution. **Using Kent is equivalent to running `claude --dangerously-skip-permissions` or `codex --yolo`.** Use [Sandboxing](../sandboxing/) to isolate its access.
+Out of the box, Kent runs without a sandbox or tool-calling permissions. **Using Kent is equivalent to running `claude --dangerously-skip-permissions` or `codex --yolo`.** The model will have **full access** to your entire computer. By using Kent, you accept full responsibility for what the model does on your computer. If you want to safely run Kent in a real sandbox, see [Sandboxing](../sandboxing/).
 :::
 
-Start the terminal client with `kent`. First-run setup selects a theme and provider connection before offering default or custom model settings. The connection choices are ChatGPT subscription, API-key Responses-compatible, and auth-less Responses-compatible.
+Start Kent CLI with `kent`. See [Authentication and connections](../authentication/) to use a subscription, API key, or local provider.
 
-API-key setup asks for a variable name on the server machine. Configure its value using the [server environment](../server/#provider-environment).
-
-Finish saves the first connection as the default. Choosing defaults finishes immediately after connection setup. Canceling setup or restarting the server before Finish discards unsaved settings and sign-in. Use [`/login` or `/logout`](../config/#provider-connections) to manage connections afterward.
+The session picker shows when a newer Kent server release is available. Update Kent through the installation channel you used.
 
 :::note
 Anthropic or Gemini subscriptions/models will not be supported until these companies allow third-party harnesses in their ToS.

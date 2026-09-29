@@ -100,7 +100,7 @@ func (i *interactiveAuthInteractor) completeRemoteAuthBootstrap(ctx context.Cont
 		}
 		completeReq.Force = force
 		completeReq.Target = target
-		resp, err := runConnectionOperation(ctx, req.Theme, "Completing sign-in...", func() (*authpb.BootstrapCompletion, error) {
+		resp, err := runConnectionOperation(ctx, req.Theme, func() (*authpb.BootstrapCompletion, error) {
 			return remote.CompleteBootstrap(ctx, completeReq)
 		})
 		if err != nil {
@@ -125,7 +125,7 @@ func (i *interactiveAuthInteractor) completeRemoteAuthBootstrap(ctx context.Cont
 }
 
 func signInConnection(ctx context.Context, remote apicontract.AuthBootstrapService, selectedTheme string, target *authpb.ConnectionTarget, force bool) error {
-	status, err := runConnectionOperation(ctx, selectedTheme, "Checking connection sign-in...", func() (*authpb.BootstrapStatus, error) {
+	status, err := runConnectionOperation(ctx, selectedTheme, func() (*authpb.BootstrapStatus, error) {
 		return remote.GetBootstrapStatus(ctx, &authpb.GetBootstrapStatusRequest{Target: target})
 	})
 	if err != nil {

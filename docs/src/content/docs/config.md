@@ -18,58 +18,18 @@ Each explicitly supplied property overrides the same property from earlier layer
 
 The private `config.local.toml` is read from the main workspace when using worktrees. Shared `config.toml`, on the other hand, follows the operation's workspace or working-directory context.
 
-Define provider connections in global configuration. Workspace and role settings select connections by ID.
+**Connection discovery is an exception** - for provider connection declarations, Kent reads global configuration to keep provider access private to that installation. See [Authentication and connections](../authentication/).
 
-Kent loads prompts, tools, and model IDs at session start and reloads them at compaction.
+Some cache-affecting settings like prompts, tools, and model IDs are **snapshotted** at session start and re-loaded at **compaction**. This is done to keep the prompt cache.
 
 ## Locations
 
 ### Persistence root
 
 - Workspace settings live at: `<workspace-root>/.kent/config.toml`. Note that workspace root is not necessarily the same as where you might have started the TUI - it's where the agent will actually do the work.
-- Private settings live at `<main-workspace-root>/.kent/config.local.toml`. Keep personal overrides uncommitted using your Git ignore configuration. Worktrees read this file from the main workspace.
+- Private settings live at `<main-workspace-root>/.kent/config.local.toml`. The file is optional and accepts workspace-allowed settings. Keep personal overrides uncommitted using your own Git ignore configuration. Kent leaves Git rules untouched and reads this file from the main workspace instead of copying it into worktrees.
 - Global settings live at: `~/.kent/config.toml`, and this location (along with all other data storage) is overridable via `--persistence-root`. The flag also relocates the root's model-visible global context — global `AGENTS.md`, the global system-prompt file, global skills, and generated assets.
-  Service installation records the selected root. The OS supports one Kent service, so install it with the root you want to manage.
-
-## Provider connections
-
-Each entry in `[connections.<id>]` defines provider access. IDs start with a lowercase ASCII letter and contain lowercase letters, digits, hyphens, or underscores. `connection` selects the default for new unroled sessions. Roles and the supervisor inherit it or select another ID through their own `connection` setting.
-
-```toml
-connection = "subscription"
-
-[connections.subscription]
-protocol = "chatgpt-codex"
-
-[connections.api]
-protocol = "responses"
-endpoint = "https://api.openai.com/v1"
-environment_variable = "MY_PROVIDER_KEY"
-
-[connections.local]
-protocol = "responses"
-endpoint = "http://127.0.0.1:8000/v1"
-
-[subagents.worker]
-connection = "local"
-
-[reviewer]
-connection = "api"
-```
-
-`chatgpt-codex` uses ChatGPT subscription sign-in. `responses` requires an HTTP or HTTPS endpoint. Its optional `environment_variable` names the API-key variable on the server machine. Omitting that setting selects auth-less access. A missing or empty referenced value produces an error when the connection is used. Setup saves the reference without checking credentials. See [Server environment](../server/#provider-environment) for service configuration.
-
-Use `/login` or `/logout` to add connections, sign in again, edit API-key references, or change the global default. Both commands leave other connections' credentials intact. Re-authentication is available during execution. Already-sent requests finish with their original credentials.
-
-With zero defined connections, terminal startup and session opens enter connection setup. Headless agent launches require a configured connection.
-
-Changing the global default applies to new unroled sessions. Explicit role assignments and saved session connections keep their selected IDs. A workspace `connection` setting overrides the global default. If a saved connection is removed, resuming its session selects and records the current role or default connection.
-
-### Existing provider configuration
-
-Server startup converts global `provider_override`, `openai_base_url`, and `provider_capabilities` settings, including global roles and supervisor settings, into named connections. Conversion changes provider access settings. Other setting values are unchanged. Formatting and comments may be discarded. ChatGPT connections require sign-in again.
-
-If API-backed settings lack an explicit environment reference, define a Responses connection with `environment_variable` and replace the old access settings with its `connection` reference. Startup identifies files that require edits. Workspace `config.toml` and private `config.local.toml` require these edits manually. Keep model, thinking, tools, and context settings in their existing scopes.
+  `kent service` is also root-aware. Each `--persistence-root` install bakes the root into the registration. The OS holds a single service, so install with the root you want managed.
 
 ## Example
 
