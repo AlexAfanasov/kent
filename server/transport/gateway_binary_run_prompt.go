@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"core/shared/protoapi"
+	chatsettingspb "core/shared/protoapi/gen/kent/api/chat_settings"
 	runpromptpb "core/shared/protoapi/gen/kent/api/run_prompt"
 	sessionlaunchpb "core/shared/protoapi/gen/kent/api/session_launch"
 	"core/shared/serverapi"
@@ -44,6 +45,10 @@ func registerRunPromptGatewayBinaryBinding(bindings map[string]gatewayBinaryBind
 					return gatewayBinaryFailureResult(method, binaryInternalFailure(errors.Join(err, conversionErr)))
 				}
 				return gatewayBinaryFailureResult(method, details)
+			}
+			var rejected *serverapi.RunSelectionRejectedError
+			if errors.As(err, &rejected) {
+				return gatewayBinaryFailureResult(method, &chatsettingspb.MutationRejected{Reason: rejected.Reason})
 			}
 			if details, ok := binaryServerNotReadyDetails(err); ok {
 				return gatewayBinaryFailureResult(method, details)

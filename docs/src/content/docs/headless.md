@@ -24,6 +24,12 @@ Continue an existing headless session:
 kent run --continue <session-id> "<follow-up>"
 ```
 
+With `--continue` or `--session`, `--thinking-level` saves the session's thinking selection before attempting to run the prompt. Even if the run fails, including when the session is busy, reopening the session shows the saved choice. An unsupported choice rejects the command without submitting the prompt or changing the selection.
+
+For an unlocked session, `--agent` supplies defaults and explicit `--model` and `--thinking-level` values override those defaults. Kent validates the combination before saving either the agent or thinking selection. A locked session validates thinking against its locked agent and model.
+
+Continuing without an agent change or `--thinking-level` uses the existing session's thinking choice. Selecting a different agent for an unlocked session without `--thinking-level` uses that agent's thinking default. For a new session, the flag selects its initial thinking level.
+
 Control an active shared run from another shell or agent:
 
 ```bash
@@ -56,9 +62,9 @@ More info in the CLI help.
 
 Roles select the model settings and context used by a headless Session.
 
-- Resuming a session selects its last-used role.
+- Resuming a session uses its last-selected role.
 - You can start a new interactive session with a specified role by running `kent --agent <role>`.
-- Once the agent starts, kent snapshots and locks some settings from its role - model, provider, tools, thinking, and others, to prevent cache invalidation because you cannot change the agent role without invalidating the caches, so **any further adjustments to roles or parameters will be ignored at least until the next compaction.**
+- Agent, model, and thinking flags follow the session settings and locks described above.
 - To apply a role while reopening a specific Session, combine it with `--session` or `--continue`.
 - To open an interactive session with a role, run: `kent --agent <role_key>`.
 
@@ -130,6 +136,8 @@ JSON mode emits exactly one final object on `stdout`.
 ```
 
 On failure, JSON mode emits `status: "error"` and an `error` object instead of `result`.
+
+A thinking value rejected by the session settings uses the `selection_rejected` error code, with guidance in `error.message`.
 
 An over-limit child launch uses the stable `subagent_max_depth_exceeded` code and includes the attempted depth and active maximum:
 

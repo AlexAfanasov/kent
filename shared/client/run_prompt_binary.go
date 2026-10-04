@@ -76,6 +76,9 @@ func (c *Remote) RunPrompt(ctx context.Context, request serverapi.RunPromptReque
 						&sessioncontract.SessionNotFoundError{SessionID: details.SessionId},
 					)
 				}
+				if rejected := failure.GetSelectionRejected(); rejected != nil {
+					return &serverapi.RunSelectionRejectedError{Reason: rejected.Reason}
+				}
 				return generatedOperationFailure(failure.Code)
 			})
 		default:
