@@ -120,6 +120,7 @@ type launchPlannerServer interface {
 	PresentationTheme() string
 	ProjectID() string
 	AuthStatusClient() apicontract.AuthStatusService
+	ConnectionManagementClient() apicontract.ConnectionManagementService
 	ProjectViewClient() apicontract.ProjectViewService
 	ServerStatusClient() apicontract.ServerStatusService
 	SessionLaunchClient() apicontract.SessionLaunchService
@@ -351,8 +352,10 @@ func (p *launchPlanner) sessionPickerHeaderInfo() (sessionPickerHeaderInfo, erro
 		ServerAddress: net.JoinHostPort(cfg.ServerHost, strconv.Itoa(cfg.ServerPort)),
 		Debug:         p.server.LocalPreferences().Debug,
 		updateStatus:  p.server.ServerStatusClient(),
-		loadModelFacts: func(ctx context.Context) (*sessionPickerModelFacts, error) {
-			return loadSessionPickerModelFacts(ctx, p.server.ChatSettingsClient(), request)
+		loadHeaderFacts: func(ctx context.Context) (*sessionPickerHeaderFacts, error) {
+			model, modelErr := loadSessionPickerModelFacts(ctx, p.server.ChatSettingsClient(), request)
+			provider, providerErr := loadSessionPickerProviderInfo(ctx, p.server.ConnectionManagementClient(), p.server.AuthStatusClient())
+			return &sessionPickerHeaderFacts{Model: model, Provider: provider}, errors.Join(modelErr, providerErr)
 		},
 	}, nil
 }

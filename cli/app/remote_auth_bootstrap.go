@@ -23,14 +23,14 @@ var (
 	ErrOAuthStateMismatch = errors.New("oauth state mismatch")
 )
 
-func ensureRemoteAuthReady(ctx context.Context, remote onboardingConnectionClient, connectionID config.ConnectionID, selectedTheme string, interactor authInteractor, interactive bool) error {
+func ensureRemoteAuthReady(ctx context.Context, remote onboardingConnectionClient, connectionID *config.ConnectionID, selectedTheme string, interactor authInteractor, interactive bool) error {
 	if remote == nil {
 		return errors.New("auth bootstrap client is required")
 	}
-	if connectionID == "" {
+	if connectionID == nil {
 		return &config.ConnectionReferenceError{}
 	}
-	target := protoapi.ExistingConnectionTarget(connectionID)
+	target := protoapi.ExistingConnectionTarget(*connectionID)
 	status, err := remote.GetBootstrapStatus(ctx, &authpb.GetBootstrapStatusRequest{Target: target})
 	if err != nil {
 		return err
@@ -59,7 +59,7 @@ func ensureRemoteAuthReady(ctx context.Context, remote onboardingConnectionClien
 					return editConnectionReference(ctx, remote, selectedTheme, id, definition)
 				}
 			}
-			return &config.ConnectionReferenceError{Connection: &connectionID}
+			return &config.ConnectionReferenceError{Connection: connectionID}
 		}
 		return ui.completeRemoteAuthBootstrap(ctx, remote, selectedTheme, target, status, false)
 	}

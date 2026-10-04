@@ -61,7 +61,7 @@ func TestStartupAndHeadlessUseSelectedConnectionDespiteUnavailableDefault(t *tes
 		t.Fatal("working B must not prompt for unavailable A")
 		return authMethodPickerResult{}, nil
 	}}
-	if err := server.EnsureAuthReady(t.Context(), *plan.ActiveSettings.Connection, interactor, true); err != nil {
+	if err := server.EnsureAuthReady(t.Context(), plan.ActiveSettings.Connection, interactor, true); err != nil {
 		t.Fatal(err)
 	}
 	resumed := fixture.attachRemoteSessionServer(t, Options{WorkspaceRoot: workspace, SessionID: plan.SessionID}, interactor)
@@ -74,7 +74,7 @@ func TestStartupAndHeadlessUseSelectedConnectionDespiteUnavailableDefault(t *tes
 	if resumePlan.ActiveSettings.Connection == nil || *resumePlan.ActiveSettings.Connection != b {
 		t.Fatalf("bound Session lost B: %v", resumePlan.ActiveSettings.Connection)
 	}
-	if err := resumed.EnsureAuthReady(t.Context(), *resumePlan.ActiveSettings.Connection, newHeadlessAuthInteractor(), false); err != nil {
+	if err := resumed.EnsureAuthReady(t.Context(), resumePlan.ActiveSettings.Connection, newHeadlessAuthInteractor(), false); err != nil {
 		t.Fatalf("selected Session reauthentication: %v", err)
 	}
 	result, err := RunPrompt(t.Context(), Options{WorkspaceRoot: workspace, WorkspaceRootExplicit: true}, "hello", 0, nil)
@@ -191,9 +191,9 @@ func TestPreSessionChatSettingsUseServerBaselineWithoutCreatingSession(t *testin
 		if model.main.bodyRequest == nil || model.subagents.bodyRequest == nil {
 			t.Fatal("both tab loads must start independently of header settings")
 		}
-		model.Update(model.collectModelFactsCmd()())
+		model.Update(model.collectHeaderFactsCmd()())
 		if model.main.bodyRequest == nil || model.subagents.bodyRequest == nil ||
-			model.startupStatus.notice.Diagnostic != readErr {
+			!errors.Is(model.headerFactsErr, readErr) {
 			t.Fatal("header failure must remain visible without stopping tab loads")
 		}
 		return sessionPickerCancelResult{}, nil
@@ -206,11 +206,11 @@ func TestPreSessionChatSettingsUseServerBaselineWithoutCreatingSession(t *testin
 	if err != nil {
 		t.Fatal(err)
 	}
-	facts, err := header.loadModelFacts(t.Context())
+	facts, err := header.loadHeaderFacts(t.Context())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if facts == nil || facts.Name == nil || *facts.Name != cfg.Settings.Model {
+	if facts == nil || facts.Model == nil || facts.Model.Name == nil || *facts.Model.Name != cfg.Settings.Model {
 		t.Fatalf("pre-Session model did not follow server settings: %+v", facts)
 	}
 	page, err := bound.ProjectViewClient().ListSessionPage(t.Context(), &projectpb.SessionPageRequest{

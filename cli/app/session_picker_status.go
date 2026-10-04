@@ -2,9 +2,13 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"strings"
 
 	"core/cli/app/internal/status"
+	"core/shared/apicontract"
+	authpb "core/shared/protoapi/gen/kent/api/auth"
 	"core/shared/textutil"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,19 +19,57 @@ type sessionPickerStatusMsg struct {
 	branch *string
 }
 
-type sessionPickerModelFactsMsg struct {
-	facts *sessionPickerModelFacts
+type sessionPickerHeaderFactsMsg struct {
+	facts *sessionPickerHeaderFacts
 	err   error
 }
 
-func (m *sessionPickerModel) collectModelFactsCmd() tea.Cmd {
-	if m.header.loadModelFacts == nil {
+func (m *sessionPickerModel) collectHeaderFactsCmd() tea.Cmd {
+	if m.header.loadHeaderFacts == nil {
 		return nil
 	}
-	load, ctx := m.header.loadModelFacts, m.requestContext
+	load, ctx := m.header.loadHeaderFacts, m.requestContext
 	return func() tea.Msg {
 		facts, err := load(ctx)
-		return sessionPickerModelFactsMsg{facts: facts, err: err}
+		return sessionPickerHeaderFactsMsg{facts: facts, err: err}
+	}
+}
+
+func loadSessionPickerProviderInfo(ctx context.Context, connections apicontract.ConnectionManagementService, auth apicontract.AuthStatusService) (sessionPickerProviderInfo, error) {
+	catalog, err := connections.GetConnections(ctx, &authpb.GetConnectionsRequest{})
+	if err != nil {
+		return nil, err
+	}
+	if catalog == nil {
+		return nil, errors.New("connection catalog is required")
+	}
+	switch len(catalog.Connections) {
+	case 0:
+		return nil, nil
+	case 1:
+		response, err := auth.GetStatus(ctx, &authpb.GetStatusRequest{
+			Provider:              &authpb.ProviderSelection{ConnectionId: catalog.Connections[0].GetId()},
+			SkipSubscriptionUsage: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return sessionPickerSingleConnection{auth: status.AuthStageFromResponse(response).Auth}, nil
+	default:
+		return sessionPickerConnectionCount(len(catalog.Connections)), nil
+	}
+}
+
+func sessionPickerProviderSummary(info sessionPickerProviderInfo) string {
+	switch provider := info.(type) {
+	case nil:
+		return ""
+	case sessionPickerConnectionCount:
+		return fmt.Sprintf("%d connections", provider)
+	case sessionPickerSingleConnection:
+		return status.AuthDisplayLabel(provider.auth)
+	default:
+		panic(fmt.Sprintf("unknown session picker provider information %T", info))
 	}
 }
 

@@ -38,6 +38,13 @@ func registerRunPromptGatewayBinaryBinding(bindings map[string]gatewayBinaryBind
 					})
 				}
 			}
+			if denied != nil {
+				details, conversionErr := protoapi.SubagentLaunchDeniedToProto(denied)
+				if conversionErr != nil {
+					return gatewayBinaryFailureResult(method, binaryInternalFailure(errors.Join(err, conversionErr)))
+				}
+				return gatewayBinaryFailureResult(method, details)
+			}
 			if details, ok := binaryServerNotReadyDetails(err); ok {
 				return gatewayBinaryFailureResult(method, details)
 			}

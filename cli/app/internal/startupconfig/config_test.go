@@ -76,11 +76,17 @@ lifecycle = ["notify", "fixed"]
 }
 
 func TestInheritedContextGuidanceRequiresStructuredMissingSession(t *testing.T) {
-	err := WorkspaceContextSessionError("missing", sessioncontract.ErrSessionNotFound)
-	if !errors.Is(err, ErrWorkspaceContextSessionMissing) || !errors.Is(err, sessioncontract.ErrSessionNotFound) {
+	const sessionID = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee"
+	diagnostics := errors.New("attachment diagnostics")
+	err := WorkspaceContextSessionError(sessionID, errors.Join(
+		&sessioncontract.SessionNotFoundError{SessionID: sessionID}, diagnostics,
+	))
+	var missing *sessioncontract.SessionNotFoundError
+	if !errors.Is(err, ErrWorkspaceContextSessionMissing) || !errors.Is(err, sessioncontract.ErrSessionNotFound) ||
+		!errors.Is(err, diagnostics) || !errors.As(err, &missing) || missing.SessionID != sessionID {
 		t.Fatalf("missing inherited context: %v", err)
 	}
-	internal := errors.New("internal failure")
+	internal := errors.New(sessioncontract.ErrSessionNotFound.Error())
 	err = WorkspaceContextSessionError("caller", internal)
 	if errors.Is(err, ErrWorkspaceContextSessionMissing) || !errors.Is(err, internal) {
 		t.Fatalf("unrelated failure mislabeled: %v", err)

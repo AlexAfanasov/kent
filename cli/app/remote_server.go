@@ -222,9 +222,16 @@ func (s *remoteAppServer) Reauthenticate(ctx context.Context) error {
 	return err
 }
 
-func (s *remoteAppServer) EnsureAuthReady(ctx context.Context, connectionID config.ConnectionID, interactor authInteractor, interactiveAuth bool) error {
+func (s *remoteAppServer) EnsureAuthReady(ctx context.Context, connectionID *config.ConnectionID, interactor authInteractor, interactiveAuth bool) error {
 	if s == nil || s.remote == nil {
 		return errors.New("remote server is required")
 	}
 	return ensureRemoteAuthReady(ctx, s.remote, connectionID, s.PresentationTheme(), interactor, interactiveAuth)
+}
+
+func (s *remoteAppServer) ConnectionManagementClient() apicontract.ConnectionManagementService {
+	if s == nil {
+		return nil
+	}
+	return s.remote
 }

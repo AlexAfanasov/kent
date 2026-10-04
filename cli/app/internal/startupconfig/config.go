@@ -63,7 +63,7 @@ var ErrWorkspaceContextSessionMissing = errors.New("workspace context session is
 
 func WorkspaceContextSessionError(sessionID string, err error) error {
 	if errors.Is(err, sessioncontract.ErrSessionNotFound) {
-		return fmt.Errorf("%s points to missing Kent session %q; unset %s or run from a live Kent shell: %w: %w", sessionenv.SessionIDEnv, strings.TrimSpace(sessionID), sessionenv.SessionIDEnv, ErrWorkspaceContextSessionMissing, err)
+		return fmt.Errorf("The calling Kent session %s is no longer present. %s refers to it; unset %s or run from a live Kent shell: %w: %w", strings.TrimSpace(sessionID), sessionenv.SessionIDEnv, sessionenv.SessionIDEnv, ErrWorkspaceContextSessionMissing, err)
 	}
 	return fmt.Errorf("resolve %s workspace context %q: %w", sessionenv.SessionIDEnv, strings.TrimSpace(sessionID), err)
 }

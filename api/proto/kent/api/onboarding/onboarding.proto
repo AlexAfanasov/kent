@@ -198,8 +198,6 @@ message ImportSelection {
 }
 
 message FinalizeRequest {
-  reserved 7, 9;
-  reserved "model_timeout_seconds", "tool_overrides";
   optional Theme theme = 1 [
     (buf.validate.field).enum = {
       defined_only: true

@@ -67,10 +67,13 @@ func (c *Remote) RunPrompt(ctx context.Context, request serverapi.RunPromptReque
 				return nil, err
 			}
 			return decodeGeneratedResult(method, result, func(failure *runpromptpb.Error) error {
+				if details := failure.GetSubagentLaunchDenied(); details != nil {
+					return protoapi.SubagentLaunchDeniedFromProto(details)
+				}
 				if details := failure.GetCallerSessionNotFound(); details != nil {
 					return errors.Join(
 						&serverapi.SubagentLaunchDeniedError{Kind: serverapi.SubagentLaunchDenialCallerMissing},
-						fmt.Errorf("%w: caller %q", sessioncontract.ErrSessionNotFound, details.SessionId),
+						&sessioncontract.SessionNotFoundError{SessionID: details.SessionId},
 					)
 				}
 				return generatedOperationFailure(failure.Code)

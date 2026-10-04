@@ -212,7 +212,7 @@ func attachSessionGeneratedError(failure *connectionpb.AttachSessionError) error
 		if err := protoapi.Validate(details); err != nil {
 			return err
 		}
-		return fmt.Errorf("%w: session %q", sessioncontract.ErrSessionNotFound, details.SessionId)
+		return &sessioncontract.SessionNotFoundError{SessionID: details.SessionId}
 	case "project_not_found":
 		details := failure.GetProjectNotFound()
 		if err := protoapi.Validate(details); err != nil {

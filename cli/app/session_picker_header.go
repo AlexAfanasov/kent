@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"core/cli/app/internal/status"
 	"core/shared/apicontract"
 	"core/shared/config"
 	serverpb "core/shared/protoapi/gen/kent/api/server"
@@ -16,17 +17,35 @@ import (
 const sessionPickerHeaderHorizontalFrameWidth = 4
 
 type sessionPickerHeaderInfo struct {
-	Version        string
-	CWD            string
-	Branch         string
-	Model          string
-	Debug          bool
-	StatusRequest  uiStatusRequest
-	ServerAddress  string
-	Notice         *startupPickerNotice
-	updateStatus   apicontract.ServerStatusService
-	loadModelFacts func(context.Context) (*sessionPickerModelFacts, error)
+	Version         string
+	CWD             string
+	Branch          string
+	Model           string
+	Provider        sessionPickerProviderInfo
+	Debug           bool
+	StatusRequest   uiStatusRequest
+	ServerAddress   string
+	Notice          *startupPickerNotice
+	updateStatus    apicontract.ServerStatusService
+	loadHeaderFacts func(context.Context) (*sessionPickerHeaderFacts, error)
 }
+
+type sessionPickerHeaderFacts struct {
+	Model    *sessionPickerModelFacts
+	Provider sessionPickerProviderInfo
+}
+
+type sessionPickerProviderInfo interface {
+	isSessionPickerProviderInfo()
+}
+
+type sessionPickerConnectionCount int
+type sessionPickerSingleConnection struct {
+	auth status.AuthInfo
+}
+
+func (sessionPickerConnectionCount) isSessionPickerProviderInfo()  {}
+func (sessionPickerSingleConnection) isSessionPickerProviderInfo() {}
 
 type sessionPickerModelFacts struct {
 	Name          *string
@@ -83,7 +102,10 @@ func (m *sessionPickerModel) projectHeaderRows(maxWidth int) []sessionPickerHead
 		lines = append(lines, *updateLine)
 	}
 	lines = append(lines, m.renderHeaderPairLines(gitBranchHeaderSegment(info.Branch), info.CWD, maxWidth)...)
-	lines = append(lines, m.renderHeaderPairLines("", info.Model, maxWidth)...)
+	lines = append(lines, m.renderHeaderPairLines(sessionPickerProviderSummary(info.Provider), info.Model, maxWidth)...)
+	if m.headerFactsLoading {
+		lines = append(lines, m.renderHeaderTextLine(pendingToolSpinnerFrame(m.spinnerFrame)+" Loading settings", maxWidth))
+	}
 	serverLine := "Server"
 	if info.ServerAddress != "" {
 		serverLine += " at " + info.ServerAddress

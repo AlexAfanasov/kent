@@ -13,6 +13,7 @@ import (
 	"core/shared/apicontract"
 	"core/shared/client"
 	"core/shared/config"
+	"core/shared/sessioncontract"
 )
 
 var dialConfiguredRemote = client.DialConfiguredRemoteForProjectWorkspaceID
@@ -55,6 +56,11 @@ func startRunPromptClientWithWorkspaceConfig(ctx context.Context, workspaceConfi
 			err = errors.Join(err, remote.Close())
 			if inherited {
 				err = startupconfig.WorkspaceContextSessionError(sessionID, err)
+			} else {
+				var missing *sessioncontract.SessionNotFoundError
+				if errors.As(err, &missing) {
+					err = fmt.Errorf("This subagent's session %s is no longer present. Was it deleted? %w", missing.SessionID, err)
+				}
 			}
 			return nil, nil, err
 		}

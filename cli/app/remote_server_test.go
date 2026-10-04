@@ -50,7 +50,7 @@ func TestRemoteAppServerReauthenticateConfiguresServerOwnedAuth(t *testing.T) {
 	_, workspace := newRegisteredAppWorkspace(t)
 	t.Setenv("REMOTE_TEST_KEY", "reauthed-key")
 	fixture := startRemoteAuthTestFixture(t, workspace)
-	if err := fixture.server.EnsureAuthReady(context.Background(), *fixture.config.Settings.Connection, newHeadlessAuthInteractor(), false); err != nil {
+	if err := fixture.server.EnsureAuthReady(context.Background(), fixture.config.Settings.Connection, newHeadlessAuthInteractor(), false); err != nil {
 		t.Fatalf("Reauthenticate: %v", err)
 	}
 
@@ -78,7 +78,7 @@ func TestRemoteAppServerEnsureAuthReadySkipsPickerWhenServerAuthAlreadyReady(t *
 		},
 	}
 
-	if err := fixture.server.EnsureAuthReady(context.Background(), *fixture.config.Settings.Connection, interactor, true); err != nil {
+	if err := fixture.server.EnsureAuthReady(context.Background(), fixture.config.Settings.Connection, interactor, true); err != nil {
 		t.Fatalf("EnsureAuthReady: %v", err)
 	}
 
@@ -88,5 +88,15 @@ func TestRemoteAppServerEnsureAuthReadySkipsPickerWhenServerAuthAlreadyReady(t *
 	}
 	if len(state.Connections) != 0 {
 		t.Fatalf("environment key was persisted: %+v", state)
+	}
+}
+
+func TestRemoteAppServerEnsureAuthReadyRequiresPresentConnection(t *testing.T) {
+	_, workspace := newRegisteredAppWorkspace(t)
+	fixture := startRemoteAuthTestFixture(t, workspace)
+	err := fixture.server.EnsureAuthReady(t.Context(), nil, newHeadlessAuthInteractor(), false)
+	var reference *config.ConnectionReferenceError
+	if !errors.As(err, &reference) || reference.Connection != nil {
+		t.Fatalf("missing Connection must retain explicit absence: %v", err)
 	}
 }

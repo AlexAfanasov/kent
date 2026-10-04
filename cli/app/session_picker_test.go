@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -196,12 +198,107 @@ func TestSessionPickerIgnoresMouseSGRRunes(t *testing.T) {
 	}
 }
 
+func TestSessionPickerHeaderLoadingKeepsAnimatingAfterPagesComplete(t *testing.T) {
+	m := newUninitializedTestSessionPickerModel(t, nil, sessionPickerHeaderInfo{
+		loadHeaderFacts: func(context.Context) (*sessionPickerHeaderFacts, error) {
+			return &sessionPickerHeaderFacts{Model: sessionPickerTestModelFacts("gpt-5", "high")}, nil
+		},
+	})
+	main := m.startBodyRequest(sessioncontract.SessionCategoryMain, sessionPickerBodyRequestInitial)
+	subagents := m.startBodyRequest(sessioncontract.SessionCategorySubagent, sessionPickerBodyRequestInitial)
+	m.Update(main())
+	m.Update(subagents())
+	_, tick := m.Update(sessionPickerSpinnerTickMsg{generation: *m.scheduledSpinnerGeneration})
+	if tick == nil {
+		t.Fatal("header loading must continue animating after Session pages finish")
+	}
+	m.Update(tick())
+	if m.spinnerFrame < 2 {
+		t.Fatal("header loading did not advance the spinner")
+	}
+	m.Update(m.collectHeaderFactsCmd()())
+	if m.reconcileSpinnerTick() != nil {
+		t.Fatal("completed header loading continued scheduling animation")
+	}
+}
+
+func TestSessionPickerHeaderRetryPreservesSelectionAndPages(t *testing.T) {
+	failure := errors.New("settings unavailable")
+	attempts := 0
+	summaries := make([]clientui.SessionSummary, 20)
+	for i := range summaries {
+		summaries[i] = pickerTestSummary(t, fmt.Sprintf("retry-session-%d", i), time.Now().UTC())
+	}
+	m := newTestSessionPickerModel(t, summaries, sessionPickerHeaderInfo{
+		loadHeaderFacts: func(context.Context) (*sessionPickerHeaderFacts, error) {
+			attempts++
+			if attempts == 1 {
+				return nil, failure
+			}
+			return &sessionPickerHeaderFacts{Model: sessionPickerTestModelFacts("gpt-5", "high")}, nil
+		},
+	})
+	m.Update(tea.WindowSizeMsg{Width: 80, Height: 10})
+	for range 15 {
+		m.Update(tea.KeyMsg{Type: tea.KeyDown})
+	}
+	selected := m.main.selected
+	offset := m.main.offset
+	activeTab := m.activeTab
+	pages := append([]sessionPickerPageSegment(nil), m.main.segments...)
+	_, retry := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if retry == nil || m.result != nil {
+		t.Fatal("Enter must retry failed header settings without opening the selected Session")
+	}
+	runSessionPickerCommands(t, m, retry)
+	if attempts != 2 || m.header.Model == "" {
+		t.Fatalf("header did not recover: attempts=%d model=%q", attempts, m.header.Model)
+	}
+	if m.main.selected != selected || !reflect.DeepEqual(m.main.segments, pages) || m.main.offset != offset || m.activeTab != activeTab {
+		t.Fatal("header retry changed Session selection, loaded pages, viewport, or active tab")
+	}
+	if m.headerFactsErr != nil {
+		t.Fatal("successful header retry retained its failure")
+	}
+	m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	if _, ok := m.result.(sessionPickerOpenResult); !ok {
+		t.Fatal("Enter did not resume normal Session opening after header recovery")
+	}
+}
+
+func TestSessionPickerListFailureKeepsRetryPriorityOverHeaderFailure(t *testing.T) {
+	failure := errors.New("read unavailable")
+	failedMain := false
+	loader := &recordingSessionPageLoader{responses: func(request sessionPageRequest) sessionPageLoadResult {
+		if request.Category == sessioncontract.SessionCategoryMain && !failedMain {
+			failedMain = true
+			return sessionPageLoadResult{err: failure}
+		}
+		response := pickerPageResponse(t, request)
+		if request.Category == sessioncontract.SessionCategoryMain {
+			response.Sessions = []clientui.SessionSummary{pickerTestSummary(t, "recovered-session", time.Now().UTC())}
+		}
+		return sessionPageLoadResult{response: response}
+	}}
+	m := newSessionPickerModel(t.Context(), loader, "dark", sessionPickerHeaderInfo{
+		loadHeaderFacts: func(context.Context) (*sessionPickerHeaderFacts, error) {
+			return nil, failure
+		},
+	})
+	runSessionPickerCommands(t, m, m.Init())
+	_, retry := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	runSessionPickerCommands(t, m, retry)
+	if m.main.bodyPhase != sessionPickerBodyReady || !errors.Is(m.headerFactsErr, failure) {
+		t.Fatal("Enter must recover the failed active list before retrying header metadata")
+	}
+}
+
 func TestSessionPickerHeaderLoadsGitBranchAsync(t *testing.T) {
 	repoRoot := initStatusLineGitRepo(t, "picker-branch")
 	m := newUninitializedTestSessionPickerModel(t, nil, sessionPickerHeaderInfo{
 		Version: "1.2.3",
-		loadModelFacts: func(context.Context) (*sessionPickerModelFacts, error) {
-			return sessionPickerTestModelFacts("gpt-5", "high"), nil
+		loadHeaderFacts: func(context.Context) (*sessionPickerHeaderFacts, error) {
+			return &sessionPickerHeaderFacts{Model: sessionPickerTestModelFacts("gpt-5", "high")}, nil
 		},
 		StatusRequest: uiStatusRequest{
 			WorkspaceRoot: repoRoot,
@@ -216,7 +313,7 @@ func TestSessionPickerHeaderLoadsGitBranchAsync(t *testing.T) {
 
 	next, _ := m.Update(cmd())
 	updated := next.(*sessionPickerModel)
-	updated.Update(updated.collectModelFactsCmd()())
+	updated.Update(updated.collectHeaderFactsCmd()())
 	plain := stripANSIAndTrimRight(updated.renderHeader())
 	for _, want := range []string{"git picker-branch", "gpt-5 high"} {
 		if !strings.Contains(plain, want) {
@@ -230,8 +327,8 @@ func TestSessionPickerHeaderInitialAsyncPaintUsesOnlyStaticShell(t *testing.T) {
 	m := newUninitializedTestSessionPickerModel(t, nil, sessionPickerHeaderInfo{
 		Version:       "1.2.3",
 		ServerAddress: "127.0.0.1:53082",
-		loadModelFacts: func(context.Context) (*sessionPickerModelFacts, error) {
-			return sessionPickerTestModelFacts("gpt-5", "high"), nil
+		loadHeaderFacts: func(context.Context) (*sessionPickerHeaderFacts, error) {
+			return &sessionPickerHeaderFacts{Model: sessionPickerTestModelFacts("gpt-5", "high")}, nil
 		},
 		StatusRequest: uiStatusRequest{
 			WorkspaceRoot: repoRoot,
