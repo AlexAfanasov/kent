@@ -28,9 +28,10 @@ func ensureRemoteAuthReady(ctx context.Context, remote onboardingConnectionClien
 		return errors.New("auth bootstrap client is required")
 	}
 	if settings.Connection == nil {
-		return &config.ConnectionReferenceError{}
+		return nil
 	}
-	status, err := remote.GetBootstrapStatus(ctx, &authpb.GetBootstrapStatusRequest{Target: protoapi.ExistingConnectionTarget(*settings.Connection)})
+	target := protoapi.ExistingConnectionTarget(*settings.Connection)
+	status, err := remote.GetBootstrapStatus(ctx, &authpb.GetBootstrapStatusRequest{Target: target})
 	if err != nil {
 		return err
 	}
@@ -43,7 +44,7 @@ func ensureRemoteAuthReady(ctx context.Context, remote onboardingConnectionClien
 	return interactor.authenticateRemote(ctx, remote, settings, status)
 }
 
-func (*headlessAuthInteractor) authenticateRemote(ctx context.Context, remote onboardingConnectionClient, _ config.Settings, status *authpb.BootstrapStatus) error {
+func (*headlessAuthInteractor) authenticateRemote(ctx context.Context, remote onboardingConnectionClient, settings config.Settings, status *authpb.BootstrapStatus) error {
 	if !status.AuthRequired {
 		return nil
 	}
@@ -51,7 +52,8 @@ func (*headlessAuthInteractor) authenticateRemote(ctx context.Context, remote on
 		return fmt.Errorf("connection %s requires sign-in: %w", status.ConnectionId, serverapi.ErrServerAuthRequired)
 	}
 	resp, err := remote.CompleteBootstrap(ctx, &authpb.CompleteBootstrapRequest{
-		Mode: authpb.BootstrapMode_BOOTSTRAP_MODE_API_KEY, Target: protoapi.ExistingConnectionTarget(config.ConnectionID(status.ConnectionId)),
+		Mode:   authpb.BootstrapMode_BOOTSTRAP_MODE_API_KEY,
+		Target: protoapi.ExistingConnectionTarget(config.ConnectionID(status.ConnectionId)),
 	})
 	if err != nil {
 		return err
