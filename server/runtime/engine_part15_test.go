@@ -249,7 +249,8 @@ func TestCompactionReplacementPayloadEmbedsReinjectedBaseMetaAndPreservedUserMes
 	})
 	reopenedReminder := false
 	for _, item := range reopened.transcriptRuntimeState().SnapshotItems() {
-		if item.Type != llm.ResponseItemTypeMessage || item.Content == nil {
+		if item.Type != llm.ResponseItemTypeMessage || item.Content == nil ||
+			item.Role == nil || *item.Role != llm.RoleDeveloper || item.MessageType != nil {
 			continue
 		}
 		if strings.Contains(*item.Content, foreignShell.SessionID) {
