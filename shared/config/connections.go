@@ -33,9 +33,9 @@ type ConnectionReferenceError struct {
 
 func (e *ConnectionReferenceError) Error() string {
 	if e.Connection == nil {
-		return "provider connection setup is required; add a connection in the interactive terminal or select a named connection in the server global configuration"
+		return "Kent has no provider connection selected. Run kent in an interactive terminal to set one up, or choose a connection in the server's global config.toml. See " + DocsURL + "/authentication/"
 	}
-	return fmt.Sprintf("provider connection %q is not defined in the server global configuration", *e.Connection)
+	return fmt.Sprintf("Kent cannot use connection %q because it is missing from the server's global config.toml. Add that connection, or select an existing one. See %s/authentication/", *e.Connection, DocsURL)
 }
 
 // SelectedConnection reads an already effective reference; role inheritance and

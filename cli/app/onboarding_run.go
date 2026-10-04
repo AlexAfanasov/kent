@@ -46,7 +46,7 @@ func runOnboardingFlow(ctx context.Context, cfg config.App, factsClient apicontr
 	if strings.TrimSpace(cfg.WorkspaceRoot) != "" {
 		workspaceRoot = &cfg.WorkspaceRoot
 	}
-	catalog, err := runConnectionOperation(ctx, string(cfg.Settings.Theme), "Loading connections...", func() (*authpb.ConnectionCatalog, error) {
+	catalog, err := runConnectionOperation(ctx, string(cfg.Settings.Theme), func() (*authpb.ConnectionCatalog, error) {
 		return connections.GetConnections(ctx, &authpb.GetConnectionsRequest{})
 	})
 	if errors.Is(err, ErrAuthCanceledByUser) {
@@ -75,7 +75,7 @@ func runOnboardingFlow(ctx context.Context, cfg config.App, factsClient apicontr
 		}
 		selectedTheme := formModel.state.selections.themeValue()
 		definition := protoapi.ConnectionToProto(form.id, form.definition)
-		_, err := runConnectionOperation(ctx, selectedTheme, "Preparing connection...", func() (*emptypb.Empty, error) {
+		_, err := runConnectionOperation(ctx, selectedTheme, func() (*emptypb.Empty, error) {
 			current, err := connections.GetConnections(ctx, &authpb.GetConnectionsRequest{})
 			if err != nil {
 				return nil, err
@@ -99,7 +99,7 @@ func runOnboardingFlow(ctx context.Context, cfg config.App, factsClient apicontr
 			continue
 		}
 		if !proto.Equal(factsFor, definition) {
-			facts, err := runConnectionOperation(ctx, selectedTheme, "Loading provider options...", func() (*capabilitypb.Facts, error) {
+			facts, err := runConnectionOperation(ctx, selectedTheme, func() (*capabilitypb.Facts, error) {
 				return factsClient.GetFacts(ctx, &capabilitypb.GetFactsRequest{WorkspaceRoot: workspaceRoot})
 			})
 			if errors.Is(err, ErrAuthCanceledByUser) {

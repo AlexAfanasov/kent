@@ -16,66 +16,26 @@ Kent resolves settings in this order (ascending priority):
 
 Each explicitly supplied property overrides the same property from earlier layers. Omitted properties inherit, including within named roles and nested tables. An explicit `false` overrides `true`.
 
-The private `config.local.toml` is read from the main workspace when using worktrees. The shared `config.toml`, on the other hand, follows the operation's workspace or working-directory context.
+The private `config.local.toml` is read from the main workspace when using worktrees. Shared `config.toml`, on the other hand, follows the operation's workspace or working-directory context.
 
-Define provider connections in global configuration. Workspace and role settings select connections by ID.
+**Connection discovery is an exception** - for provider connection declarations, Kent reads global configuration to keep provider access private to that installation. See [Authentication and connections](../authentication/).
 
-Kent loads prompts, tools, and model IDs at session start and reloads them at compaction.
+Some cache-affecting settings like prompts, tools, and model IDs are **snapshotted** at session start and re-loaded at **compaction**. This is done to keep the prompt cache.
 
 ## Locations
 
 ### Persistence root
 
 - Workspace settings live at: `<workspace-root>/.kent/config.toml`. Note that workspace root is not necessarily the same as where you might have started the TUI - it's where the agent will actually do the work.
-- Private settings live at `<main-workspace-root>/.kent/config.local.toml`. Keep personal overrides uncommitted using your Git ignore configuration. Worktrees read this file from the main workspace.
+- Private settings live at `<main-workspace-root>/.kent/config.local.toml`. The file is optional and accepts workspace-allowed settings. Keep personal overrides uncommitted using your own Git ignore configuration. Kent leaves Git rules untouched and reads this file from the main workspace instead of copying it into worktrees.
 - Global settings live at: `~/.kent/config.toml`, and this location (along with all other data storage) is overridable via `--persistence-root`. The flag also relocates the root's model-visible global context — global `AGENTS.md`, the global system-prompt file, global skills, and generated assets.
-  Service installation records the selected root. The OS supports one Kent service, so install it with the root you want to manage.
+  `kent service` is also root-aware. Each `--persistence-root` install bakes the root into the registration. The OS holds a single service, so install with the root you want managed.
 
 ## Model defaults
 
 Kent defaults to GPT-6 Sol. The built-in `fast` role uses GPT-6 Luna on first-party OpenAI connections. GPT-6 models default to a 272,000-token context window. During setup, the large-context option selects 872,000 tokens for ChatGPT subscriptions or 1,050,000 tokens for the OpenAI API. Requests above 272,000 input tokens have higher [OpenAI API rates](https://developers.openai.com/api/docs/pricing).
 
 GPT-6 Sol and Luna support `thinking_level = "none"` to disable thinking.
-
-## Provider connections
-
-Each entry in `[connections.<id>]` defines provider access. IDs start with a lowercase ASCII letter and contain lowercase letters, digits, hyphens, or underscores. `connection` selects the default for new unroled sessions. Roles and the supervisor inherit it or select another ID through their own `connection` setting.
-
-```toml
-connection = "subscription"
-
-[connections.subscription]
-protocol = "chatgpt-codex"
-
-[connections.api]
-protocol = "responses"
-endpoint = "https://api.openai.com/v1"
-environment_variable = "MY_PROVIDER_KEY"
-
-[connections.local]
-protocol = "responses"
-endpoint = "http://127.0.0.1:8000/v1"
-
-[subagents.worker]
-connection = "local"
-
-[reviewer]
-connection = "api"
-```
-
-`chatgpt-codex` uses ChatGPT subscription sign-in. `responses` requires an HTTP or HTTPS endpoint. Its optional `environment_variable` names the API-key variable on the server machine. Omitting that setting selects auth-less access. A missing or empty referenced value produces an error when the connection is used. Setup saves the reference without checking credentials. See [Server environment](../server/#provider-environment) for service configuration.
-
-Use `/login` or `/logout` to add connections, sign in again, edit API-key references, or change the global default. Both commands leave other connections' credentials intact. Re-authentication is available during execution. Already-sent requests finish with their original credentials.
-
-With zero defined connections, terminal startup and session opens enter connection setup. Headless agent launches require a configured connection.
-
-Changing the global default applies to new unroled sessions. Explicit role assignments and saved session connections keep their selected IDs. A workspace `connection` setting overrides the global default. If a saved connection is removed, resuming its session selects and records the current role or default connection.
-
-### Existing provider configuration
-
-Server startup converts global `provider_override`, `openai_base_url`, and `provider_capabilities` settings, including global roles and supervisor settings, into named connections. Conversion changes provider access settings. Other setting values are unchanged. Formatting and comments may be discarded. ChatGPT connections require sign-in again.
-
-If API-backed settings lack an explicit environment reference, define a Responses connection with `environment_variable` and replace the old access settings with its `connection` reference. Startup identifies files that require edits. Workspace `config.toml` and private `config.local.toml` require these edits manually. Keep model, thinking, tools, and context settings in their existing scopes.
 
 ## Example
 
@@ -116,7 +76,7 @@ postprocessing_mode = "all" # shell output token optimizations by Kent: none | b
 
 [workflow]
 completion_mode = "auto"
-concurrency = 5 # max agents to run concurrently for workflows; script nodes / chats do not use it
+concurrency = 5 # max agents to run concurrently for workflows; Script Nodes / Chats do not use it
 max_invalid_completion_attempts = 5
 pre_compaction_tokens = 180880 # defaults to 70% of context_compaction_threshold_tokens
 use_required_tool_calls = true # whether to force models to never stop until workflow is complete on the API level
@@ -135,7 +95,7 @@ timeout_seconds = 120
 verbose_output = false # set true to show complete supervisor suggestions in ongoing transcript
 # system_prompt_file = "~/.kent/reviewer_system_prompt.md"
 
-# Headless default role; new interactive TUI and desktop sessions use the top-level settings.
+# Headless default role; new interactive TUI and Desktop Sessions use the top-level settings.
 [subagents.default]
 model = "gpt-6-astra"
 thinking_level = "low"
@@ -149,17 +109,17 @@ protocol = "chatgpt-codex"
 
 ### Workflow subagent delegation
 
-`[workflow] subagents` defaults to `false`. Set it to `true` to let workflow agents delegate to roles whose effective `agent_callable` and `workflow_subagent` values allow it. Direct workflow node assignment, including assignment to `default`, is independent of this setting.
+`[workflow] subagents` defaults to `false`. Set it to `true` to let Workflow agents delegate to roles whose effective `agent_callable` and `workflow_subagent` values allow it. Direct workflow node assignment, including assignment to `default`, is independent of this setting.
 
 `agent_callable` is optional role metadata and defaults to `true`. It controls whether model-originated child delegation may target the role, including the `default` role. Humans can launch the role with `kent run` regardless of this value.
 
-`workflow_subagent` is optional role metadata and defaults to `true`. Every role, including `default` and `fast`, is callable by a workflow agent only when its effective `agent_callable` and `workflow_subagent` values and `[workflow] subagents = true` all permit it.
+`workflow_subagent` is optional role metadata and defaults to `true`. Every role, including `default` and `fast`, is callable by a Workflow agent only when its effective `agent_callable` and `workflow_subagent` values and `[workflow] subagents = true` all permit it.
 
 ## Thinking
 
 Thinking selects the model's reasoning effort. Change it in Chat settings or with [`/thinking <level>`](/slash-commands/). Available levels depend on the model and provider.
 
-A session's thinking override takes precedence over its agent configuration and global `thinking_level`. Use terminal detail mode to inspect recorded thinking updates on supported models.
+A Session's Thinking override takes precedence over its Agent configuration and global `thinking_level`. Use terminal detail mode to inspect recorded Thinking updates on supported models.
 
 ## CLI overrides
 
@@ -232,9 +192,9 @@ Supervisor reviews run asynchronously, so you can continue working after the mai
 | `reviewer.thinking_level`       | string          | inherits `thinking_level`       | `KENT_REVIEWER_THINKING_LEVEL`       |                                                                                                                                                             | Thinking level override for supervisor, provider/model-dependent. |
 | `reviewer.model_verbosity`      | string          | inherits `model_verbosity`      | `KENT_REVIEWER_MODEL_VERBOSITY`      | Text verbosity hint for supported reviewer models. Allowed: `""`, `low`, `medium`, `high`.                                                                  |
 | `reviewer.model_context_window` | int             | inherits `model_context_window` | `KENT_REVIEWER_MODEL_CONTEXT_WINDOW` | Explicit reviewer context-window size sent to the reviewer provider. The effective value must be at least `40000`.                                          |
-| `reviewer.system_prompt_file`   | optional string | unset                           |                                      | Selected custom supervisor prompt file, resolved relative to its supplying configuration file. Omission inherits the main setting. Empty paths are invalid. |
+| `reviewer.system_prompt_file`   | optional string | unset                           |                                      | Selected custom Supervisor prompt file, resolved relative to its supplying configuration file. Omission inherits the main setting. Empty paths are invalid. |
 | `reviewer.timeout_seconds`      | int             | `120`                           | `KENT_REVIEWER_TIMEOUT_SECONDS`      | Reviewer HTTP timeout. Must be `> 0`.                                                                                                                       |
-| `reviewer.verbose_output`       | bool            | `false`                         | `KENT_REVIEWER_VERBOSE_OUTPUT`       | Controls only whether the TUI shows you full reviewer feedback.                                                                                             |
+| `reviewer.verbose_output`       | bool            | `false`                         | `KENT_REVIEWER_VERBOSE_OUTPUT`       | Controls only whether the TUI shows you full Reviewer feedback.                                                                                             |
 
 ### Supervisor model capabilities
 

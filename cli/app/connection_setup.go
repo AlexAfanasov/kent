@@ -3,8 +3,6 @@ package app
 import (
 	"context"
 	"errors"
-	"fmt"
-	"strings"
 
 	"core/shared/config"
 	"core/shared/protoapi"
@@ -16,7 +14,7 @@ const (
 	connectionStepID                 onboardingStepID = "connection_id"
 	connectionStepEndpoint           onboardingStepID = "connection_endpoint"
 	connectionStepEnvironment        onboardingStepID = "connection_environment"
-	connectionEnvironmentExplanation                  = "Don't paste your API key here. This is the name of the **environment variable** Kent will read **at the server's location** to get the api key from."
+	connectionEnvironmentExplanation                  = "Don't paste your API key here. This is the name of the **environment variable** Kent will read **at the server's location** to get the api key from. Alternatively, place it in a ~/.kent/.env file."
 )
 
 type connectionTemplate string
@@ -83,9 +81,6 @@ func (f *connectionForm) selectTemplate(template connectionTemplate) {
 
 func (f *connectionForm) steps() []onboardingStepDefinition {
 	finish := func(state *onboardingFlowState) error {
-		if err := f.definition.Validate(); err != nil {
-			return errors.New("Check the connection address and environment variable name.")
-		}
 		state.pendingAction = onboardingPendingActionConnectionComplete
 		return nil
 	}
@@ -110,14 +105,7 @@ func (f *connectionForm) steps() []onboardingStepDefinition {
 			return onboardingScreen{ID: connectionStepID, Kind: onboardingScreenInput, Title: "Name this connection", InputValue: string(f.id),
 				Helper: "Start with a lowercase letter. Use lowercase letters, numbers, hyphens, or underscores."}
 		}, apply: func(state *onboardingFlowState, value string) error {
-			id, err := config.ParseConnectionID(value)
-			if err != nil {
-				return errors.New("Start the ID with a lowercase letter and use only lowercase letters, numbers, hyphens, or underscores.")
-			}
-			if _, exists := f.catalog[id]; exists {
-				return fmt.Errorf("Connection %q already exists.", id)
-			}
-			f.id = id
+			f.id = config.ConnectionID(value)
 			if f.template == connectionTemplateSubscription {
 				return finish(state)
 			}
@@ -131,12 +119,7 @@ func (f *connectionForm) steps() []onboardingStepDefinition {
 				}
 				return onboardingScreen{ID: connectionStepEndpoint, Kind: onboardingScreenInput, Title: "Responses endpoint", InputValue: value, Helper: "Enter the full HTTP or HTTPS base URL, including /v1 if your server requires it."}
 			}, apply: func(state *onboardingFlowState, value string) error {
-				definition := f.definition
-				definition.Endpoint = &value
-				if err := definition.Validate(); err != nil {
-					return errors.New("Enter an absolute HTTP or HTTPS endpoint.")
-				}
-				f.definition = definition
+				f.definition.Endpoint = &value
 				if f.template == connectionTemplateAnonymous {
 					return finish(state)
 				}
@@ -151,9 +134,6 @@ func (f *connectionForm) steps() []onboardingStepDefinition {
 				return onboardingScreen{ID: connectionStepEnvironment, Kind: onboardingScreenInput, Title: "API-key environment variable", InputValue: value,
 					Body: newStartupMarkdownRendererWithWordWrap(state.selections.themeValue()).Render(connectionEnvironmentExplanation, defaultPickerWidth)}
 			}, apply: func(state *onboardingFlowState, value string) error {
-				if strings.TrimSpace(value) == "" {
-					return errors.New("Enter the environment variable name.")
-				}
 				f.definition.EnvironmentVariable = &value
 				return finish(state)
 			}},

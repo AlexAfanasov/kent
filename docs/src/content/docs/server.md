@@ -32,15 +32,7 @@ All service commands accept `--persistence-root` and honor `KENT_PERSISTENCE_ROO
 
 ## Provider environment
 
-API-key [connections](../config/#provider-connections) reference variables in the server's launch environment or its persistence-root `.env` file. The default file is `~/.kent/.env`. A service uses that same file, independently of your shell's environment.
-
-```dotenv
-MY_PROVIDER_KEY=your-provider-key
-```
-
-Restrict the file to its owner with `chmod 600 ~/.kent/.env`. Kent accepts a missing or empty file. Unreadable files, malformed dotenv content, and permissions allowing other users to read the file prevent startup.
-
-A variable present in the process environment overrides the file, even when its value is empty. Restart the server after changing either environment source. Keep secrets in the server environment and enter only the variable name during connection setup. Agent shell processes exclude referenced provider-key variables.
+See [API keys and background services](../authentication/#api-keys-and-background-services) for provider credentials and the server's `.env` file.
 
 ## Backends
 

@@ -14,7 +14,7 @@ import (
 )
 
 func (s *remoteAppServer) EnsureConnectionSetup(ctx context.Context) error {
-	catalog, err := runConnectionOperation(ctx, s.PresentationTheme(), "Loading connections...", func() (*authpb.ConnectionCatalog, error) {
+	catalog, err := runConnectionOperation(ctx, s.PresentationTheme(), func() (*authpb.ConnectionCatalog, error) {
 		return s.remote.GetConnections(ctx, &authpb.GetConnectionsRequest{})
 	})
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *remoteAppServer) manageConnections(ctx context.Context, catalog *authpb
 			if selected.Protocol == authpb.ConnectionProtocol_CONNECTION_PROTOCOL_CHATGPT {
 				return signInConnection(ctx, s.remote, selectedTheme, &authpb.ConnectionTarget{Target: &authpb.ConnectionTarget_AddConnection{AddConnection: selected}}, false)
 			}
-			_, err = runConnectionOperation(ctx, selectedTheme, "Saving connection...", func() (*emptypb.Empty, error) {
+			_, err = runConnectionOperation(ctx, selectedTheme, func() (*emptypb.Empty, error) {
 				return s.remote.ConfigureConnection(ctx, &authpb.ConfigureConnectionRequest{Change: &authpb.ConfigureConnectionRequest_Add{Add: selected}})
 			})
 			return err
@@ -118,7 +118,7 @@ func (s *remoteAppServer) manageConnections(ctx context.Context, catalog *authpb
 	if picked.ChoiceID != "default" {
 		return errors.New("invalid default connection choice")
 	}
-	catalog, err = runConnectionOperation(ctx, selectedTheme, "Saving default connection...", func() (*authpb.ConnectionCatalog, error) {
+	catalog, err = runConnectionOperation(ctx, selectedTheme, func() (*authpb.ConnectionCatalog, error) {
 		if _, err := s.remote.ConfigureConnection(ctx, &authpb.ConfigureConnectionRequest{Change: &authpb.ConfigureConnectionRequest_DefaultConnectionId{DefaultConnectionId: selected.Id}}); err != nil {
 			return nil, err
 		}
@@ -149,7 +149,7 @@ func editConnectionReference(ctx context.Context, remote apicontract.ConnectionM
 	steps := form.steps()
 	model := newOnboardingFormModel(state, onboardingWorkflow{steps: steps[len(steps)-1:]})
 	return runConnectionForm(ctx, model, func() error {
-		_, err := runConnectionOperation(ctx, selectedTheme, "Saving environment reference...", func() (*emptypb.Empty, error) {
+		_, err := runConnectionOperation(ctx, selectedTheme, func() (*emptypb.Empty, error) {
 			return remote.ConfigureConnection(ctx, &authpb.ConfigureConnectionRequest{Change: &authpb.ConfigureConnectionRequest_Reference{
 				Reference: &authpb.ConnectionReferenceEdit{ConnectionId: string(id), EnvironmentVariable: *form.definition.EnvironmentVariable},
 			}})
