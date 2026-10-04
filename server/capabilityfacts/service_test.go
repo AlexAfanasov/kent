@@ -43,6 +43,13 @@ func TestServiceProjectsModelCatalogAndUnknownFallback(t *testing.T) {
 	if gpt56 == nil || !gpt56.Known || gpt56.LargeWindow != nil {
 		t.Fatalf("gpt-5.6-sol fact = %+v, want known without a redundant large-window choice", gpt56)
 	}
+	newSol := knownModelFact(resp.Models.KnownModels, "gpt-6.1-sol")
+	if newSol == nil || !newSol.Known || newSol.ContextWindowTokens == nil ||
+		*newSol.ContextWindowTokens != 272_000 || newSol.LargeWindow == nil ||
+		newSol.LargeWindow.Tokens != 1_050_000 ||
+		len(newSol.SupportedThinkingLevels) != 5 {
+		t.Fatalf("gpt-6.1-sol fact = %+v, want known model with context and effort support", newSol)
+	}
 	sol := knownModelFact(resp.Models.KnownModels, "gpt-6-sol")
 	if sol == nil || sol.ContextWindowTokens == nil || sol.LargeWindow == nil || sol.LargeWindow.Tokens <= *sol.ContextWindowTokens {
 		t.Fatalf("gpt-6-sol fact = %+v, want a strictly larger optional window", sol)
@@ -78,7 +85,7 @@ func TestServiceProjectsContextWindowsForSelectedConnection(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			for _, model := range []string{"gpt-6-sol", "gpt-6-luna", "gpt-6-astra"} {
+			for _, model := range []string{"gpt-6-sol", "gpt-6.1-sol", "gpt-6-luna", "gpt-6-astra"} {
 				fact := knownModelFact(facts.Models.KnownModels, model)
 				if fact == nil || fact.ContextWindowTokens == nil || fact.LargeWindow == nil {
 					t.Fatalf("%s missing context window choices: %+v", model, fact)

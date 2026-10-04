@@ -13,6 +13,7 @@ func TestGPT6Catalog(t *testing.T) {
 		efforts []string
 	}{
 		{"gpt-6-astra", time.April, []string{"low", "medium", "high", "xhigh", "max"}},
+		{"gpt-6.1-sol", time.April, []string{"low", "medium", "high", "xhigh", "max"}},
 		{"gpt-6-sol", time.April, []string{"none", "low", "medium", "high", "xhigh", "max"}},
 		{"gpt-6-luna", time.May, []string{"none", "low", "medium", "high", "xhigh", "max"}},
 	} {
@@ -29,6 +30,14 @@ func TestGPT6Catalog(t *testing.T) {
 			}
 			if !contract.SupportsVisionInputs || !contract.SupportsReasoningSummary || !contract.SupportsVerbosity || !contract.SupportsNativeThinkingUpdates {
 				t.Fatalf("missing GPT-6 capabilities: %+v", contract)
+			}
+			if contract.ContextWindowTokens != 272_000 || contract.LargeContextWindowTokens != 1_050_000 {
+				t.Fatalf("context windows = %d/%d, want 272000/1050000", contract.ContextWindowTokens, contract.LargeContextWindowTokens)
+			}
+			if contract.SubscriptionContext == nil ||
+				contract.SubscriptionContext.ContextWindowTokens != 272_000 ||
+				contract.SubscriptionContext.LargeContextWindowTokens != 872_000 {
+				t.Fatalf("subscription context = %+v, want 272000/872000", contract.SubscriptionContext)
 			}
 		})
 	}

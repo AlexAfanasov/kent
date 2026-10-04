@@ -28,27 +28,60 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func TestFinalizerDefaultEqualChoicesRenderLikeDefaults(t *testing.T) {
+func TestFinalizerEqualInteractiveChoicesRenderIdentically(t *testing.T) {
 	nullRoot := t.TempDir()
 	nullHome := t.TempDir()
 	defaultRoot := t.TempDir()
 	defaultHome := t.TempDir()
-	defaultModel := onboardingpb.ModelChoice{Kind: onboardingpb.ModelKind_MODEL_KIND_KNOWN, ModelId: ptr("gpt-6-sol")}
+	defaultModel := onboardingpb.ModelChoice{Kind: onboardingpb.ModelKind_MODEL_KIND_KNOWN, ModelId: ptr("gpt-6.1-sol")}
 	defaultTheme := onboardingpb.Theme_THEME_AUTO
+	defaultSupervisor := &onboardingpb.SupervisorChoice{Frequency: onboardingpb.SupervisorFrequency_SUPERVISOR_FREQUENCY_EDITS}
 
-	if _, err := newTestFinalizer(t, nullRoot, nullHome).Finalize(context.Background(), &onboardingpb.FinalizeRequest{}); err != nil {
+	if _, err := newTestFinalizer(t, nullRoot, nullHome).Finalize(context.Background(), &onboardingpb.FinalizeRequest{Supervisor: defaultSupervisor}); err != nil {
 		t.Fatalf("null finalize: %v", err)
 	}
 	if _, err := newTestFinalizer(t, defaultRoot, defaultHome).Finalize(context.Background(), &onboardingpb.FinalizeRequest{
-		Model: &defaultModel,
-		Theme: &defaultTheme,
+		Model:      &defaultModel,
+		Theme:      &defaultTheme,
+		Supervisor: defaultSupervisor,
 	}); err != nil {
-		t.Fatalf("default-equal finalize: %v", err)
+		t.Fatalf("interactive default-equal finalize: %v", err)
 	}
-	nullConfig := readSettingsFile(t, nullRoot)
-	defaultConfig := readSettingsFile(t, defaultRoot)
-	if string(nullConfig) != string(defaultConfig) {
-		t.Fatalf("default-equal choices should render exactly like omitted choices")
+	nullConfig := loadFinalizedConfig(t, nullRoot).Settings
+	defaultConfig := loadFinalizedConfig(t, defaultRoot).Settings
+	if nullConfig.Model != defaultConfig.Model || nullConfig.Theme != defaultConfig.Theme ||
+		nullConfig.Reviewer.Frequency != defaultConfig.Reviewer.Frequency ||
+		nullConfig.Reviewer.Model != defaultConfig.Reviewer.Model {
+		t.Fatalf("equal interactive choices produced different settings: %+v / %+v", nullConfig, defaultConfig)
+	}
+}
+
+func TestFinalizerDefaultsSelectSupervisorModelOnlyForFirstPartyOpenAI(t *testing.T) {
+	theme := onboardingpb.Theme_THEME_AUTO
+	commandsImport := &onboardingpb.ImportSelection{Mode: onboardingpb.ImportMode_IMPORT_MODE_NONE}
+	for _, tc := range []struct {
+		name                string
+		endpoint            string
+		wantSupervisorModel string
+	}{
+		{name: "first-party OpenAI", endpoint: "https://api.openai.com/v1", wantSupervisorModel: "gpt-6-luna"},
+		{name: "OpenAI-compatible provider", endpoint: "http://localhost:1234/v1", wantSupervisorModel: "gpt-6.1-sol"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if _, err := newTestFinalizerAtEndpoint(t, root, t.TempDir(), tc.endpoint).Finalize(t.Context(), &onboardingpb.FinalizeRequest{
+				Theme:          &theme,
+				CommandsImport: commandsImport,
+			}); err != nil {
+				t.Fatalf("Finalize: %v", err)
+			}
+
+			settings := loadFinalizedConfig(t, root).Settings
+			if settings.Model != "gpt-6.1-sol" || settings.Reviewer.Frequency == "off" || settings.Reviewer.Model != tc.wantSupervisorModel {
+				t.Fatalf("default settings = model %q, Supervisor %q/%q; want gpt-6.1-sol, enabled/%s",
+					settings.Model, settings.Reviewer.Frequency, settings.Reviewer.Model, tc.wantSupervisorModel)
+			}
+		})
 	}
 }
 
@@ -91,6 +124,9 @@ func TestFinalizerCustomModelUsesPendingProviderCapabilities(t *testing.T) {
 	app := loadFinalizedConfig(t, root)
 	if app.Settings.ModelVerbosity != config.ModelVerbosityHigh || app.Settings.CompactionMode != config.CompactionModeNative {
 		t.Fatal("custom model lost the selected provider's verbosity or native compaction")
+	}
+	if app.Settings.Reviewer.Model != "gpt-6-luna" {
+		t.Fatalf("omitted Supervisor choice = %q, want provider-specific GPT-6 Luna default", app.Settings.Reviewer.Model)
 	}
 }
 

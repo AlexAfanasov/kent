@@ -284,7 +284,6 @@ func TestOnboardingSelectionInvariantFailureCannotSubmitFinalizationInRelease(t 
 
 func onboardingSeedConfig() config.App {
 	settings := config.DefaultOnboardingSettings()
-	settings.Model = "gpt-6-sol"
 	settings.ModelContextWindow = 272_000
 	settings.ContextCompactionThresholdTokens = 272_000 * 95 / 100
 	settings.Reviewer.Model = settings.Model

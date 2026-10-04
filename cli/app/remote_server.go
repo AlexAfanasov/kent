@@ -217,12 +217,12 @@ func (s *remoteAppServer) Reauthenticate(ctx context.Context, interactor authInt
 		}
 		return err
 	}
-	return ensureRemoteAuthReady(ctx, s.remote, s.cfg.Settings, interactor, interactiveAuth)
+	return ensureRemoteAuthReady(ctx, s.remote, s.cfg.Settings, interactor)
 }
 
-func (s *remoteAppServer) EnsureAuthReady(ctx context.Context, settings config.Settings, interactor authInteractor, interactiveAuth bool) error {
+func (s *remoteAppServer) EnsureAuthReady(ctx context.Context, settings config.Settings, interactor authInteractor) error {
 	if s == nil || s.remote == nil {
 		return errors.New("remote server is required")
 	}
-	return ensureRemoteAuthReady(ctx, s.remote, settings, interactor, interactiveAuth)
+	return ensureRemoteAuthReady(ctx, s.remote, settings, interactor)
 }

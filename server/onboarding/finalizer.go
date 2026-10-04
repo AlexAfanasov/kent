@@ -80,6 +80,20 @@ func (f *Finalizer) Finalize(_ context.Context, req *onboardingpb.FinalizeReques
 		if err != nil {
 			return config.Settings{}, options, err
 		}
+		if req.Supervisor == nil && settings.Reviewer.Frequency != "off" {
+			provider, err := llm.ResolveRuntimeProviderCapabilities(initial)
+			if err != nil {
+				return config.Settings{}, options, err
+			}
+			if provider.IsOpenAIFirstParty {
+				settings.Reviewer.Model = "gpt-6-luna"
+				if preserved == nil {
+					preserved = map[string]bool{}
+				}
+				preserved["reviewer.model"] = true
+				options.PreservedDefaults = preserved
+			}
+		}
 		if _, err := config.RenderSettingsTOMLForOnboarding(settings, options); err != nil {
 			return config.Settings{}, options, invalidRequest("settings", "invalid")
 		}

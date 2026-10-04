@@ -20,7 +20,7 @@
   6. **Thinking level** — only for reasoning-capable models; level list + Disable + custom-value entry (custom opens a text sub-step; empty custom value rejected).
   7. **Verbosity** — only for verbosity-capable models.
   8. **Follow-up questions** — enable/disable the ask-question tool.
-  9. **Supervisor** — off / after edits / always; when enabled, sub-steps for supervisor model (pre-filled with the primary model) and supervisor thinking (mirrors primary until explicitly diverged; custom entry as above).
+  9. **Supervisor** — off / after edits / always; when enabled, sub-steps for Supervisor model (pre-filled with the primary model) and Supervisor thinking (mirrors primary until explicitly diverged; custom entry as above).
   10. **Compaction mode** — Local always offered; Native only when the provider supports it; Manual-only.
   11. **Skills import** — only when importable items are detected from other providers; skills enablement is a multi-select.
   12. **Slash commands import** — only when importable slash commands are detected from other providers.
@@ -37,7 +37,10 @@
 
 - Finalizing shows a progress state. For custom setup, imports finish before Kent writes the configuration. A failed import rolls back the imported changes and returns to the wizard with an error. Connection credential persistence and a failed final configuration write must follow the bounded failure contract in [Provider Connections](provider-connections.md).
 - The defaults path writes the default configuration.
-- The default model must be GPT-6 Sol with a 272,000-token context window.
+- The default model must be GPT-6.1 Sol with a 272,000-token context window.
+- When Supervisor is enabled, the Defaults option uses GPT-6 Luna on first-party OpenAI connections and the primary model on other providers.
+- Custom setup must pre-fill Supervisor with the primary model.
+- Custom setup must use the selected Supervisor model at finalization.
 - Config is written exactly once, at finalize. No step writes settings incrementally. Connection setup must remain unsaved before finalization.
 - Canceling before finalization aborts startup with a clear `setup canceled` error and writes nothing. The next launch opens first-time setup again.
 - Finalization cannot be canceled after submission.
@@ -54,7 +57,7 @@
 - Capability Facts must combine the completed pending connection selection with import-discovery observations performed for the request.
 - Capability Facts does not wait for an in-progress startup activation to publish newer settings. A separate setup attempt may observe a newer published snapshot.
 - Model facts include the complete built-in known-model list and each model's capabilities.
-- GPT-6 Astra, Sol, and Luna must use a 272,000-token default context window. Their optional large window must be 872,000 tokens for ChatGPT subscription connections and 1,050,000 tokens for OpenAI API-key connections. Setup must display and persist the window for the selected connection.
+- GPT-6 Astra, GPT-6.1 Sol, GPT-6 Sol, and GPT-6 Luna must use a 272,000-token default context window. Their optional large window must be 872,000 tokens for ChatGPT subscription connections and 1,050,000 tokens for OpenAI API-key connections. Setup must display and persist the window for the selected connection.
 - Model facts include one fallback for non-empty unknown model names, so every client applies the same behavior.
 - Provider capability facts cover both the current effective provider and explicit provider choices.
 - An unknown explicit provider fails with an unsupported-provider error. Kent does not replace it with the current provider.

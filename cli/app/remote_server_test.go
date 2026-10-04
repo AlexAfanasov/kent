@@ -78,7 +78,7 @@ func TestRemoteAppServerEnsureAuthReadySkipsPickerWhenServerAuthAlreadyReady(t *
 		},
 	}
 
-	if err := fixture.server.EnsureAuthReady(context.Background(), fixture.config.Settings, interactor, true); err != nil {
+	if err := fixture.server.EnsureAuthReady(context.Background(), fixture.config.Settings, interactor); err != nil {
 		t.Fatalf("EnsureAuthReady: %v", err)
 	}
 

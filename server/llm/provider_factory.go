@@ -179,6 +179,7 @@ func providerContracts() []ProviderContract {
 			},
 			ModelContracts: []ModelCapabilityContract{
 				gpt6ModelContract("gpt-6-astra", time.April, []string{"low", "medium", "high", "xhigh", "max"}),
+				gpt6ModelContract("gpt-6.1-sol", time.April, []string{"low", "medium", "high", "xhigh", "max"}),
 				gpt6ModelContract("gpt-6-sol", time.April, []string{"none", "low", "medium", "high", "xhigh", "max"}),
 				gpt6ModelContract("gpt-6-luna", time.May, []string{"none", "low", "medium", "high", "xhigh", "max"}),
 				{Model: "gpt-5.6-sol", ContextWindowTokens: 372_000, LargeContextWindowTokens: 372_000, KnowledgeCutoff: ModelKnowledgeCutoff{Month: time.February, Year: 2026}, HasKnowledgeCutoff: true, SupportsReasoningEffort: true, SupportedReasoningEfforts: []string{"low", "medium", "high", "xhigh", "max", "ultra"}, SupportsReasoningSummary: true, SupportsVerbosity: true, SupportedVerbosityLevels: []string{"low", "medium", "high"}, SupportsVisionInputs: true},
